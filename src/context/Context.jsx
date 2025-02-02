@@ -1,21 +1,19 @@
 import { createContext, useState } from "react";
-import runChat from "../config/gemini";
 
 export const Context = createContext();
 
 const ContextProvider = (props) => {
 
-    const [input,setInput] = useState("");
-    const [recentPrompt,setRecentPrompt] = useState("");
-    const [prevPrompts,setPrevPrompts] = useState([]);
-    const [showResult,setShowResult] = useState(false);
-    const [loading,setLoading] = useState(false);
+    const [input, setInput] = useState("");
+    const [recentPrompt, setRecentPrompt] = useState("");
+    const [prevPrompts, setPrevPrompts] = useState([]);
+    const [showResult, setShowResult] = useState(false);
+    const [loading, setLoading] = useState(false);
     const [resultData, setResultData] = useState("");
-
-    const delayPara = (index,nextWord) => {
+    const delayPara = (index, nextWord) => {
         setTimeout(function () {
-            setResultData(prev => prev+nextWord);
-        },75*index)
+            setResultData(prev => prev + nextWord);
+        }, 75 * index)
     }
 
     const newChat = () => {
@@ -29,38 +27,68 @@ const ContextProvider = (props) => {
         setResultData("")
         setLoading(true)
         setShowResult(true)
-        let response;
+        let response="";
         if (prompt !== undefined) {
-            response = await runChat(prompt);
-            setRecentPrompt(prompt);
+            // await runChat(prompt, setLoading, setResultData);
+            const url = "http://192.168.1.37:8080/api/" + prompt;
+            const eventSource = new EventSource(url);
+
+            eventSource.onmessage = (event) => {
+                console.log("Event Source Message: ", typeof (event.data));
+                response = response +  " " +event.data;
+                setResultData(response);
+                
+                setLoading(false)
+                setInput("")
+                setRecentPrompt(prompt);
+            }
+
+            eventSource.onerror = (error) => {
+                console.error("Event Source Failed: ", error);
+                eventSource.close();
+            }
+
         }
-        else
-        {
+        else {
             setPrevPrompts(prev => [...prev, input]);
             setRecentPrompt(input)
-            response = await runChat(input)
-        }
-        
-        let responseArray = response.split("**");
-        let newResponse ="" ;
-        for (let i = 0; i < responseArray.length; i++)
-        {
-            if (i === 0 || i % 2 !== 1) {
-                newResponse += responseArray[i];
-            } 
-            else {
-                newResponse += "<b>" + responseArray[i] + "</b>";
+            // await runChat(input, setLoading, setResultData);
+            const url = "http://192.168.1.37:8080/api/" + input;
+            const eventSource = new EventSource(url);
+
+            eventSource.onmessage = (event) => {
+                console.log("Event Source Message: ", typeof (event.data));
+                response = response +  " " +event.data;
+                setResultData(response);
+                // let responseArray = response.split("**");
+                // let newResponse = "";
+                // for (let i = 0; i < responseArray.length; i++) {
+                //     if (i === 0 || i % 2 !== 1) {
+                //         newResponse += responseArray[i];
+                //     }
+                //     else {
+                //         newResponse += "<b>" + responseArray[i] + "</b>";
+                //     }
+                // }
+                // let newResponse2 = newResponse.split("*").join("</br>")
+                // let newResponseArray = newResponse2.split("");
+                // for (let i = 0; i < newResponseArray.length; i++) {
+                //     const nextWord = newResponseArray[i];
+                //     delayPara(i, nextWord + "")
+                // }
+                setLoading(false)
+                setInput("")
             }
-        } 
-        let newResponse2 = newResponse.split("*").join("</br>")
-        let newResponseArray = newResponse2.split("");
-        for (let i = 0; i < newResponseArray.length; i++)
-        { 
-            const nextWord = newResponseArray[i];
-            delayPara(i,nextWord+"")
+
+            eventSource.onerror = (error) => {
+                console.error("Event Source Failed: ", error);
+                eventSource.close();
+            }
+
+
         }
-        setLoading(false)
-        setInput("")
+
+
 
     }
 
@@ -81,7 +109,7 @@ const ContextProvider = (props) => {
 
     return (
         <Context.Provider value={ContextValue}>
-            { props.children }
+            {props.children}
         </Context.Provider>
     )
 }

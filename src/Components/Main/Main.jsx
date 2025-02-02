@@ -1,12 +1,30 @@
-import React, { useContext } from 'react'
+import React, { useContext, useState } from 'react'
 import './Main.css'
 import { assets } from '../../assets/assets'
 import { Context } from '../../context/Context'
-
+import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition'
 const Main = () => {
   
-  const{onSent,recentPrompt,showResult,loading,resultData,setInput,input} = useContext(Context)
-  
+  const{onSent,recentPrompt,showResult,loading,resultData,setInput,input} = useContext(Context);
+  const [isListening, setIsListening] = useState(false);
+  const startListening = () => {
+    setIsListening(true);
+    SpeechRecognition.startListening({ continuous: true, language: 'en-US' });
+  }
+  const stopListening = () => {
+    setIsListening(false);
+    setInput(transcript);
+    SpeechRecognition.stopListening();
+  }
+  const {
+    transcript,
+    browserSupportsSpeechRecognition
+  } = useSpeechRecognition();
+
+  if (!browserSupportsSpeechRecognition) {
+    alert("Browser doesn't support Speech Recognition.");
+  }
+
   return (
     <div className="main">
       <div className="nav">
@@ -65,13 +83,14 @@ const Main = () => {
           <div className="search-box">
             <input
               onChange={(e) => setInput(e.target.value)}
-              value={input}
+              value={isListening?transcript:input}
               type="text"
               placeholder="Enter a prompt here"
             />
             <div>
               <img src={assets.gallery_icon} alt="" />
-              <img src={assets.mic_icon} alt="" />
+              {!isListening?<img src={assets.mic_icon} alt="" onClick={() => startListening()}/>
+              : <img src={assets.mic_icon} alt="" onClick={() => stopListening()}/>}
               {input?<img onClick={() => onSent()} src={assets.send_icon} alt="" />:null}
             </div>
           </div>
